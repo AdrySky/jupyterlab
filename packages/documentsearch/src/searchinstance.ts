@@ -235,7 +235,8 @@ export class SearchInstance implements IDisposable {
     forceFocus: true,
     replaceText: '',
     replaceEntryShown: false,
-    filters: { output: true, selectedCells: false },
+    filters: { output: true, selectedCells: false, 
+      readOnlyCell: false, nonDeletableCell: false, inputCollapsed: false, outputScroll: false },
     filtersOpen: false
   };
 

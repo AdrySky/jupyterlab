@@ -27,6 +27,8 @@ import {
   TranslationBundle
 } from '@jupyterlab/translation';
 
+import { Cell } from '@jupyterlab/cells';
+
 const OVERLAY_CLASS = 'jp-DocumentSearch-overlay';
 const OVERLAY_ROW_CLASS = 'jp-DocumentSearch-overlay-row';
 const INPUT_CLASS = 'jp-DocumentSearch-input';
@@ -302,6 +304,19 @@ interface IFilterSelectionProps {
   toggleOutput: () => void;
   toggleSelectedCells: () => void;
   trans: TranslationBundle;
+
+  searchReadOnlyCells: boolean;
+  searchNonDeletableCells: boolean;
+  searchInputCollapsed: boolean;
+  searchOutputScroll: boolean;
+  canToggleReadOnlyCells: boolean;
+  canToggleNonDeletableCells: boolean;
+  canToggleInputCollapsed: boolean;
+  canToggleOutputScroll: boolean;
+  toggleReadOnlyCells: () => void;
+  toggleNonDeletableCells: () => void;
+  toggleInputCollapsed: () => void;
+  toggleOutputScroll: () => void;
 }
 
 interface IFilterSelectionState {}
@@ -345,6 +360,66 @@ class FilterSelection extends React.Component<
             onChange={this.props.toggleSelectedCells}
           />
         </div>
+        <div>
+          <span
+            className={
+              this.props.canToggleReadOnlyCells ? '' : SEARCH_OPTIONS_DISABLED_CLASS
+            }
+          >
+            {this.props.trans.__('Read-Only Cell')}
+          </span>
+          <input
+            type="checkbox"
+            disabled={!this.props.canToggleReadOnlyCells}
+            checked={this.props.searchReadOnlyCells}
+            onChange={this.props.toggleReadOnlyCells}
+          />
+        </div>
+        <div>
+          <span
+            className={
+              this.props.canToggleNonDeletableCells ? '' : SEARCH_OPTIONS_DISABLED_CLASS
+            }
+          >
+            {this.props.trans.__('Non-Deletable Cell')}
+          </span>
+          <input
+            type="checkbox"
+            disabled={!this.props.canToggleNonDeletableCells}
+            checked={this.props.searchNonDeletableCells}
+            onChange={this.props.toggleNonDeletableCells}
+          />
+        </div>
+        <div>
+          <span
+            className={
+              this.props.canToggleInputCollapsed ? '' : SEARCH_OPTIONS_DISABLED_CLASS
+            }
+          >
+            {this.props.trans.__('Input Collapsed')}
+          </span>
+          <input
+            type="checkbox"
+            disabled={!this.props.canToggleInputCollapsed}
+            checked={this.props.searchInputCollapsed}
+            onChange={this.props.toggleInputCollapsed}
+          />
+        </div>
+        <div>
+          <span
+            className={
+              this.props.canToggleOutputScroll ? '' : SEARCH_OPTIONS_DISABLED_CLASS
+            }
+          >
+            {this.props.trans.__('Output Scrollable')}
+          </span>
+          <input
+            type="checkbox"
+            disabled={!this.props.canToggleOutputScroll}
+            checked={this.props.searchOutputScroll}
+            onChange={this.props.toggleOutputScroll}
+          />
+        </div>
       </label>
     );
   }
@@ -377,6 +452,10 @@ class SearchOverlay extends React.Component<
     this._toggleSearchSelectedCells = this._toggleSearchSelectedCells.bind(
       this
     );
+    this._toggleReadOnlyCell = this._toggleReadOnlyCell.bind(this);
+    this._toggleNonDeletableCell = this._toggleNonDeletableCell.bind(this);
+    this._toggleInputCollapsed = this._toggleInputCollapsed.bind(this);
+    this._toggleOutputScroll = this._toggleOutputScroll.bind(this);
   }
 
   componentDidMount() {
@@ -450,6 +529,56 @@ class SearchOverlay extends React.Component<
     this.props.onStartQuery(query, this.state.filters);
   }
 
+  private _metadataChanged = (
+    cell: any,
+    _readOnly: boolean,
+    _nonDeletable: boolean,
+    _inputCollapsed: boolean,
+    _outputScroll: boolean
+  )=>{
+    /**
+      * Make the cell non-editable
+      */
+    //  if( _readOnly){
+    //   cell.model.metadata.set('editable', false);
+    // } else {
+    //   cell.model.metadata.delete('editable');
+    // }
+
+    if( _readOnly){
+      cell.readOnly = !cell.readOnly;
+    }
+
+    /**
+     * Make the cell non-deletable
+     */
+    if( _nonDeletable){
+      cell.model.metadata.set('deletable', false);
+    } else {
+      cell.model.metadata.delete('deletable');
+    }
+
+    /**
+     * Make the cell's input collapsed
+     */
+    if( _inputCollapsed){
+      let jupyter = cell.model.metadata.get('jupyter') || Object.create(null);
+      jupyter = { ...jupyter, source_hidden: true};    
+      cell.model.metadata.set('jupyter', jupyter);
+    } else{
+      cell.model.metadata.delete('jupyter');
+    }
+
+    /**
+     * Make the cell scrollable
+     */
+     if( _outputScroll){
+      cell.model.metadata.set('scrolled', true);
+    } else {
+      cell.model.metadata.delete('scrolled');
+    }
+  }
+
   private _onClose() {
     // Clean up and close widget.
     this.props.onEndSearch();
@@ -497,6 +626,54 @@ class SearchOverlay extends React.Component<
       () => this._executeSearch(true, undefined, true)
     );
   }
+  private _toggleReadOnlyCell() {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        filters: {
+          ...prevState.filters,
+          readOnlyCell: !prevState.filters.readOnlyCell
+        }
+      }),
+      () => this._metadataChanged(Cell, true, false, false, false)
+    );
+  }
+  private _toggleNonDeletableCell() {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        filters: {
+          ...prevState.filters,
+          nonDeletableCell: !prevState.filters.nonDeletableCell
+        }
+      }),
+      () => this._metadataChanged(Cell,false, true, false, false)
+    );
+  }
+  private _toggleInputCollapsed() {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        filters: {
+          ...prevState.filters,
+          inputCollapsed: !prevState.filters.inputCollapsed
+        }
+      }),
+      () => this._metadataChanged(Cell, false, false, true, false)
+    );
+  }
+  private _toggleOutputScroll() {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        filters: {
+          ...prevState.filters,
+          outputScroll: !prevState.filters.outputScroll
+        }
+      }),
+      () => this._metadataChanged(Cell,false, false, false, true)
+    );
+  }
 
   private _toggleFiltersOpen() {
     this.setState(prevState => ({
@@ -523,6 +700,19 @@ class SearchOverlay extends React.Component<
         toggleOutput={this._toggleSearchOutput}
         toggleSelectedCells={this._toggleSearchSelectedCells}
         trans={this.translator.load('jupyterlab')}
+
+        searchReadOnlyCells={this.state.filters.readOnlyCell}
+        searchNonDeletableCells={this.state.filters.nonDeletableCell}
+        searchInputCollapsed={this.state.filters.inputCollapsed}
+        searchOutputScroll={this.state.filters.outputScroll}
+        canToggleReadOnlyCells={true}
+        canToggleNonDeletableCells={true}
+        canToggleInputCollapsed={true}
+        canToggleOutputScroll={true}
+        toggleReadOnlyCells={this._toggleReadOnlyCell}
+        toggleNonDeletableCells={this._toggleNonDeletableCell}
+        toggleInputCollapsed={this._toggleInputCollapsed}
+        toggleOutputScroll={this._toggleOutputScroll}
       />
     ) : null;
     const icon = this.state.replaceEntryShown ? caretDownIcon : caretRightIcon;

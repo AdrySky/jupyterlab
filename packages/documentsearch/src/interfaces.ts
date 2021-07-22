@@ -7,6 +7,10 @@ import { Widget } from '@lumino/widgets';
 export interface IFiltersType {
   output: boolean;
   selectedCells: boolean;
+  readOnlyCell: boolean;
+  nonDeletableCell: boolean;
+  inputCollapsed: boolean;
+  outputScroll: boolean;
 }
 
 export interface IDisplayState {
